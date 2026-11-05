@@ -10,6 +10,7 @@ build-parameters:
       commands:
         - npm ci
         - npx cds build --production
+        - bash scripts/copy-ui-to-router.sh
 modules:
   - name: scrum-8-vanstock-upload-srv
     type: nodejs
@@ -71,3 +72,8 @@ resources:
       config:
         xsappname: scrum-8-vanstock-upload-${org}-${space}
         tenant-mode: dedicated
+        oauth2-configuration:
+          redirect-uris:
+            - https://~{app-api/app-uri}/**
+    requires:
+      - name: app-api
