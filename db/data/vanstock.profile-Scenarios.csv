@@ -1,0 +1,4 @@
+code;name;descr
+Upload;Profile Upload;New profiles and profile additions (cut-over template)
+Return;Return;Returns that decrement an engineer's profile
+Leaver;Leaver;Leaver returns: archive, decrement and close the profile

@@ -1,0 +1,7 @@
+node_modules/
+mta_archives/
+*.mtar
+gen/
+cf.tgz
+cf8
+app/router/resources/
