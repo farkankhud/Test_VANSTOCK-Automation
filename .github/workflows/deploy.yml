@@ -1,0 +1,124 @@
+name: Build and Deploy to BTP CF
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A newer push to the same branch cancels the older, still-running deploy
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_API: ${{ secrets.CF_API }}
+      CF_USER: ${{ secrets.CF_USER }}
+      CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
+      CF_ORG: ${{ secrets.CF_ORG }}
+      CF_SPACE: ${{ secrets.CF_SPACE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: npm-${{ runner.os }}-
+
+      - name: Decide whether scaffolding is needed
+        id: need
+        run: |
+          NEED=false
+          if [ -f scaffold.json ]; then
+            [ -f mta.yaml ] || NEED=true
+            for n in $(jq -r '(.apps // [])[].name' scaffold.json); do [ -f "app/$n/webapp/manifest.json" ] || NEED=true; done
+          fi
+          echo "scaffold=$NEED" >> "$GITHUB_OUTPUT"; echo "scaffold needed: $NEED"
+
+      - name: Install cf CLI and MultiApps plugin
+        run: |
+          wget -q -O "$RUNNER_TEMP/cf.tgz" "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github"
+          tar -xzf "$RUNNER_TEMP/cf.tgz" -C "$RUNNER_TEMP" cf8
+          sudo mv "$RUNNER_TEMP/cf8" /usr/local/bin/cf
+          cf version
+          cf install-plugin multiapps -f
+
+      - name: Log in to Cloud Foundry
+        run: |
+          cf api "${CF_API%/}"
+          cf auth "$CF_USER" "$CF_PASSWORD"
+          cf target -o "$CF_ORG" -s "$CF_SPACE"
+
+      - name: Install build tools (cds-dk 8, mbt)
+        if: hashFiles('mta.yaml') != '' || steps.need.outputs.scaffold == 'true'
+        run: npm i -g --prefer-offline --no-audit --no-fund @sap/cds-dk@8 mbt
+
+      - name: Install SAP Fiori generator (only when a UI must be generated)
+        if: steps.need.outputs.scaffold == 'true'
+        run: npm i -g --prefer-offline --no-audit --no-fund yo@5 @sap/generator-fiori
+
+      # Generates project infrastructure and Fiori UIs with the same tools BAS uses.
+      # Idempotent: cds add runs only while mta.yaml is missing; each UI is generated only while its manifest is missing.
+      - name: Scaffold (cds add + SAP Fiori generator, headless)
+        if: steps.need.outputs.scaffold == 'true'
+        run: |
+          set -e
+          npm install --prefer-offline --no-audit --no-fund
+          if [ ! -f mta.yaml ]; then
+            FACETS=$(jq -r '(.cdsAdd // ["hana","xsuaa","approuter","mta"]) | join(",")' scaffold.json)
+            echo "cds add $FACETS --for production"
+            cds add "$FACETS" --for production
+            npm install
+          fi
+          for i in $(jq -r '(.apps // []) | keys[]' scaffold.json); do
+            NAME=$(jq -r ".apps[$i].name" scaffold.json)
+            if [ -f "app/$NAME/webapp/manifest.json" ]; then echo "UI $NAME exists, skipping"; continue; fi
+            jq --arg root "$PWD" --argjson i "$i" '.apps[$i] as $a | {
+              version: "0.2",
+              floorplan: "FE_LROP",
+              project: { name: $a.name, targetFolder: ($root + "/app"), namespace: ($a.namespace // ""),
+                         title: ($a.title // $a.name), description: ($a.description // $a.title // $a.name),
+                         ui5Version: ($a.ui5Version // ""), localUI5Version: ($a.ui5Version // ""), sapux: true },
+              service: { servicePath: $a.servicePath,
+                         capService: { projectPath: $root, serviceName: $a.serviceName, serviceCdsPath: ($a.serviceCdsPath // "srv/service") } },
+              entityConfig: { mainEntity: { entityName: $a.mainEntity },
+                              generateFormAnnotations: ($a.generateAnnotations // false),
+                              generateLROPAnnotations: ($a.generateAnnotations // false) },
+              telemetryData: { generationSourceName: "cap-dev-agent", generationSourceVersion: "1" }
+            }' scaffold.json > "/tmp/fiori-gen-$NAME.json"
+            cat "/tmp/fiori-gen-$NAME.json"
+            yo @sap/fiori:headless "/tmp/fiori-gen-$NAME.json" --force --skipInstall
+          done
+          git config user.name "cap-dev-agent[bot]"
+          git config user.email "cap-dev-agent@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git status --short
+            git commit -m "chore: scaffold via cds add + SAP Fiori generator (pipeline)"
+            git push
+          fi
+
+      - name: Build MTA
+        if: hashFiles('mta.yaml') != ''
+        run: |
+          npm install --prefer-offline --no-audit --no-fund
+          mbt build -p=cf -t mta_archives --mtar app.mtar
+
+      - name: Deploy MTA
+        if: hashFiles('mta.yaml') != ''
+        run: cf deploy mta_archives/app.mtar -f
+
+      - name: Show app URLs
+        if: hashFiles('mta.yaml') != ''
+        run: cf apps
