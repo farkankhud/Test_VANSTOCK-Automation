@@ -1,0 +1,28 @@
+{
+  "generationParameters": {
+    "generationDate": "Thu Nov 05 2026 07:20:04 GMT+0000 (Coordinated Universal Time)",
+    "generatorPlatform": "CLI",
+    "serviceType": "Local CAP",
+    "metadataFilename": "",
+    "serviceUrl": "http://localhost:4004/odata/v4/admin/",
+    "appName": "vanstockprofiledisplay",
+    "appTitle": "Van Stock Profiles",
+    "appDescription": "Display van stock profiles, items, change log and archive",
+    "appNamespace": "scrum7",
+    "ui5Theme": "sap_horizon",
+    "ui5Version": "1.149.0",
+    "enableEslint": true,
+    "enableTypeScript": false,
+    "showMockDataInfo": false,
+    "generatorVersion": "1.34.0",
+    "template": "List Report Page V4",
+    "generatorName": "SAP Fiori Application Generator",
+    "entityRelatedConfig": [
+      {
+        "type": "Main Entity",
+        "value": "Profiles"
+      }
+    ],
+    "launchText": "To launch the generated app, start your CAP project:  and navigate to the following location in your browser:\n\nhttp://localhost:4004/vanstockprofiledisplay/webapp/index.html"
+  }
+}
