@@ -1,0 +1,43 @@
+{
+  "name": "scrum-7-vanstock-profile",
+  "version": "1.0.0",
+  "description": "SCRUM-7: Van Stock Profile mass upload (uploads, returns, leavers)",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "cds-serve"
+  },
+  "dependencies": {
+    "@sap/cds": "^8",
+    "@cap-js/hana": "^1",
+    "express": "^4",
+    "@sap/xssec": "^4"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^1",
+    "@sap/cds-dk": "^8"
+  },
+  "cds": {
+    "requires": {
+      "db": {
+        "[development]": {
+          "kind": "sqlite",
+          "credentials": {
+            "url": ":memory:"
+          }
+        },
+        "[production]": {
+          "kind": "hana"
+        }
+      },
+      "[production]": {
+        "auth": "xsuaa"
+      }
+    },
+    "sql": {
+      "native_hana_associations": false
+    }
+  }
+}

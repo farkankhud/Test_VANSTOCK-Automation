@@ -1,0 +1,25 @@
+{
+  "cdsAdd": ["hana", "xsuaa", "approuter", "mta"],
+  "apps": [
+    {
+      "name": "vanstockprofile",
+      "namespace": "scrum7",
+      "title": "Van Stock Profile Upload",
+      "description": "Mass upload of van stock profiles, returns and leavers",
+      "serviceName": "AdminService",
+      "servicePath": "/odata/v4/admin/",
+      "serviceCdsPath": "srv/admin-service",
+      "mainEntity": "Uploads"
+    },
+    {
+      "name": "vanstockprofiledisplay",
+      "namespace": "scrum7",
+      "title": "Van Stock Profiles",
+      "description": "Display van stock profiles, items, change log and archive",
+      "serviceName": "AdminService",
+      "servicePath": "/odata/v4/admin/",
+      "serviceCdsPath": "srv/admin-service",
+      "mainEntity": "Profiles"
+    }
+  ]
+}
