@@ -15,10 +15,13 @@
   },
   "devDependencies": {
     "@cap-js/sqlite": "^1",
-    "@sap/cds-dk": "^8"
+    "@sap/cds-dk": "^8",
+    "cds-plugin-ui5": "^0.17.0"
   },
   "scripts": {
-    "start": "cds-serve"
+    "start": "cds-serve",
+    "watch-vanstockupload": "cds watch --open scrum8.vanstockupload/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-vanstockprofiles": "cds watch --open scrum8.vanstockprofiles/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "cds": {
     "requires": {
@@ -34,8 +37,21 @@
         }
       },
       "[production]": {
-        "auth": "xsuaa"
+        "auth": "xsuaa",
+        "db": {
+          "kind": "hana"
+        }
       }
+    },
+    "sql": {
+      "native_hana_associations": false
     }
-  }
+  },
+  "workspaces": [
+    "app/*"
+  ],
+  "sapux": [
+    "app/vanstockupload",
+    "app/vanstockprofiles"
+  ]
 }
